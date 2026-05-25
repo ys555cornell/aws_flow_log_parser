@@ -1,2 +1,287 @@
-# aws_flow_log_parser
-A log parser that can parse file containing AWS flow log data and filter rows based on source IP address, destination IP address
+# AWS VPC Flow Log Parser
+
+A Python command-line tool for parsing and filtering AWS VPC Flow Logs.
+
+The parser supports filtering by:
+
+- Source IPv4 address
+- Destination IPv4 address
+- Source port
+- Destination port
+
+It also supports aggregation of connection counts using a standard 5-tuple:
+
+(source IP, source port, destination IP, destination port, transport protocol)
+
+Reference:
+https://docs.aws.amazon.com/vpc/latest/userguide/flow-log-records.html
+
+---
+
+# Features
+
+- Stream-based parsing (memory efficient)
+- Supports files up to 20 MB and beyond
+- ASCII file validation
+- IPv4 validation
+- Port validation
+- Graceful malformed-line handling
+- 5-tuple connection aggregation
+- Unit tests using pytest
+
+---
+
+# Requirements
+
+- Python 3.9+
+- ASCII input file
+- IPv4 addresses only
+
+---
+
+# Project Structure
+
+```text
+project/
+├── flow_log_parser.py
+├── test_flow_log_parser.py
+├── requirements.txt
+└── README.md
+```
+
+---
+
+# Installation
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Minimal requirements:
+
+```text
+pytest>=8.0.0
+```
+
+---
+
+# Usage
+
+Basic usage:
+
+```bash
+python flow_log_parser.py <file_path>
+```
+
+Example:
+
+```bash
+python flow_log_parser.py sample.log
+```
+
+---
+
+# Filtering Examples
+
+## Filter by Source IP
+
+```bash
+python flow_log_parser.py sample.log --src-ip 10.0.0.1
+```
+
+---
+
+## Filter by Destination IP
+
+```bash
+python flow_log_parser.py sample.log --dst-ip 10.0.0.2
+```
+
+---
+
+## Filter by Source Port
+
+```bash
+python flow_log_parser.py sample.log --src-port 443
+```
+
+---
+
+## Filter by Destination Port
+
+```bash
+python flow_log_parser.py sample.log --dst-port 80
+```
+
+---
+
+## Combine Filters
+
+```bash
+python flow_log_parser.py sample.log \
+    --src-ip 10.0.0.1 \
+    --dst-port 443
+```
+
+---
+
+# Connection Count Aggregation
+
+Use `--show-counts` to display aggregated 5-tuple counts.
+
+Example:
+
+```bash
+python flow_log_parser.py sample.log --show-counts
+```
+
+Example output:
+
+```text
+--- Connection Counts ---
+
+Src: 10.0.0.1:12345 -> Dst: 10.0.0.2:80 [Proto: 6] | Count: 3
+Src: 10.0.0.2:54321 -> Dst: 10.0.0.5:443 [Proto: 6] | Count: 1
+```
+
+Protocol values follow AWS VPC Flow Log protocol numbering:
+- 6 = TCP
+- 17 = UDP
+
+---
+
+# Input Format
+
+The parser expects the default AWS VPC Flow Log format:
+
+```text
+<version> <account-id> <interface-id> <srcaddr> <dstaddr>
+<srcport> <dstport> <protocol> <packets> <bytes>
+<start> <end> <action> <log-status>
+```
+
+Example:
+
+```text
+2 123456789 eni-abc123 10.0.0.1 10.0.0.2 12345 80 6 10 1000 100 200 ACCEPT OK
+```
+
+---
+
+# Error Handling
+
+The parser handles:
+
+- Missing files
+- Invalid IPv4 addresses
+- Invalid ports
+- Non-ASCII input files
+- Malformed log lines
+
+Malformed lines are skipped with warnings instead of terminating execution.
+
+---
+
+# Running Tests
+
+Run all tests:
+
+```bash
+pytest -v
+```
+
+Or:
+
+```bash
+python -m pytest -v
+```
+
+Expected output:
+
+```text
+================ test session starts ================
+collected 18 items
+
+test_flow_log_parser.py ..................
+================ 18 passed ================
+```
+
+---
+
+# Design Decisions
+
+## Stream-Based Parsing
+
+The parser processes files line-by-line instead of loading the entire file into memory.
+
+Benefits:
+- Memory efficient
+- Scales well for large files
+- Suitable for log-processing workloads
+
+---
+
+## Generator-Based Processing
+
+`parse_and_filter()` uses Python generators (`yield`) to produce matching records incrementally.
+
+Benefits:
+- Reduced memory usage
+- Better composability
+- Faster processing startup
+
+---
+
+# Complexity Analysis
+
+Let:
+- N = number of log lines
+- K = number of unique 5-tuples
+
+## Time Complexity
+
+```text
+O(N)
+```
+
+Each line is processed once.
+
+---
+
+## Space Complexity
+
+```text
+O(K)
+```
+
+Space usage depends on the number of unique aggregated connections.
+
+Parsing itself is streaming and does not load the entire file into memory.
+
+---
+
+# Assumptions
+
+- Input files are ASCII encoded
+- IP addresses are IPv4 only
+- Filters use exact matching only
+- AWS flow logs follow the standard v2 field layout
+
+---
+
+# Possible Future Improvements
+
+- CIDR/subnet filtering
+- IPv6 support
+- CSV/JSON output support
+- Parallel processing for very large files
+- Protocol name decoding (TCP/UDP)
+- Compressed log support (.gz)
+
+---
+
+# Author
+
+YITONG SUN
